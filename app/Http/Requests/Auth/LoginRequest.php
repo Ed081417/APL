@@ -39,17 +39,25 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        if (filter_var(implode('', $this->only('username')), FILTER_VALIDATE_EMAIL)) {
+            if (! Auth::attempt([
+                    'email' => implode('', $this->only('username')),
+                    'password' => implode('', $this->only('password')),
+                ], $this->boolean('remember'))
+            ) {
 
-        if (! Auth::attempt($this->only('username', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'username' => trans('auth.failed'),
+                ]);
+            } 
+        } else {
+            if (! Auth::attempt($this->only('username', 'password'), $this->boolean('remember'))) {
 
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
+                throw ValidationException::withMessages([
+                    'username' => trans('auth.failed'),
+                ]);
+            } 
         }
-
-        RateLimiter::clear($this->throttleKey());
     }
 
     /**
